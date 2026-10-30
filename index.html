@@ -134,7 +134,6 @@
       <div class="err" id="introErr"></div>
       <div class="row" style="margin-top:6px">
         <button class="btn" id="startBtn">Enter the vault →</button>
-        <button class="btn-ghost" id="viewBoardBtn" type="button">View scoreboard</button>
       </div>
       <p class="mode-note" id="modeNote"></p>
     </div>
@@ -183,8 +182,15 @@
         <div class="stat"><b id="sTime">0:00</b>Time used</div>
         <div class="stat"><b id="sBonus">0</b>Time bonus</div>
       </div>
-      <h3>🏆 Scoreboard</h3>
-      <div id="endBoard"></div>
+      <div id="endBoardWrap">
+        <h3>🏆 Scoreboard</h3>
+        <div id="endBoard"></div>
+      </div>
+      <div class="winner" id="waitBox" style="background:var(--navy-2)">
+        🤫 Your score has been locked in.<div class="name" style="font-size:1.5rem">Results revealed when time is up</div>
+        Keep your score to yourself until your teacher shows the scoreboard!
+        <p class="small" id="saveStatus" style="color:#c9d3e0;margin:8px 0 0"></p>
+      </div>
       <div class="row" style="margin-top:14px">
         <button class="btn-ghost" id="refreshBtn">↻ Refresh scoreboard</button>
         <button class="btn" id="againBtn">Play again</button>
@@ -202,7 +208,16 @@
       <div class="eyebrow">Live scoreboard · Class code <span id="boardRoom"></span></div>
       <h1>🏆 Who escaped the vault?</h1>
     </div>
-    <div class="card">
+    <div class="card hidden" id="pinGate">
+      <h3>🔑 Teacher access</h3>
+      <label for="pinInput">Enter the teacher PIN to open the scoreboard</label>
+      <div class="answer-row" style="margin-top:0">
+        <input type="text" id="pinInput" autocomplete="off" style="-webkit-text-security:disc">
+        <button class="btn" id="pinBtn">Open</button>
+      </div>
+      <div class="err" id="pinErr"></div>
+    </div>
+    <div class="card hidden" id="boardCard">
       <div id="liveBoard"></div>
       <div class="row" style="margin-top:14px">
         <button class="btn-ghost" id="boardRefresh">↻ Refresh</button>
@@ -229,6 +244,15 @@
    ===================================================================== */
 const FIREBASE_DB_URL = "";
 const DEFAULT_CLASS_CODE = "TVM-2026";
+
+/* TEACHER CONTROLS
+   - The full scoreboard opens only via  ?board  in the URL AND this PIN.
+     Change it before class. (It is visible in the page source, so it stops
+     casual clicking, not a determined code-reader.)
+   - SHOW_BOARD_TO_STUDENTS = false → students only see their own result;
+     set to true if you want finishers to see the live ranking. */
+const TEACHER_PIN = "vault2026";
+const SHOW_BOARD_TO_STUDENTS = false;
 const GAME_SECONDS = 20 * 60;
 const POINTS_PER_LOCK = 100, WRONG_PENALTY = 25, HINT_COST = 30, MAX_ATTEMPTS = 3, MIN_SOLVE_POINTS = 10;
 
@@ -384,7 +408,6 @@ $("modeNote").textContent = Store.shared
 
 $("startBtn").onclick = startGame;
 $("nick").addEventListener("keydown", e => { if (e.key === "Enter") startGame(); });
-$("viewBoardBtn").onclick = () => openBoard(cleanRoom($("room").value));
 
 function startGame(){
   const name = $("nick").value.trim().replace(/\s+/g," ");
@@ -549,13 +572,22 @@ async function endGame(escaped){
 
   show("end");
   if (escaped) confetti();
+  $("endBoardWrap").classList.toggle("hidden", !SHOW_BOARD_TO_STUDENTS);
+  $("refreshBtn").classList.toggle("hidden", !SHOW_BOARD_TO_STUDENTS);
+  $("waitBox").classList.toggle("hidden", SHOW_BOARD_TO_STUDENTS);
   $("endBoard").innerHTML = `<p class="small">Saving your score…</p>`;
+  $("saveStatus").textContent = "Saving your score…";
   try { await Store.save(S.room, S.record); }
-  catch(e){ $("endBoard").innerHTML = `<p class="err">Couldn’t reach the shared scoreboard. Show your teacher this screen: ${total} pts.</p>`; return; }
-  refreshEndBoard();
+  catch(e){
+    const msg = `Couldn’t reach the shared scoreboard. Show your teacher this screen: ${total} pts.`;
+    $("endBoard").innerHTML = `<p class="err">${msg}</p>`; $("saveStatus").textContent = "⚠️ " + msg; return;
+  }
+  $("saveStatus").textContent = "✅ Score saved.";
+  if (SHOW_BOARD_TO_STUDENTS) refreshEndBoard();
 }
 
 async function refreshEndBoard(){
+  if (!SHOW_BOARD_TO_STUDENTS) return;
   try { $("endBoard").innerHTML = boardHTML(rank(await Store.load(S.room)), S.name); }
   catch(e){ $("endBoard").innerHTML = `<p class="err">Couldn’t load the scoreboard.</p>`; }
 }
@@ -563,8 +595,22 @@ $("refreshBtn").onclick = refreshEndBoard;
 $("againBtn").onclick = () => { show("intro"); $("nick").value = S.name; };
 
 /* ============================ BOARD VIEW ============================ */
-async function openBoard(room){
+function openBoard(room){
   $("boardRoom").textContent = room; show("boardView");
+  if (sessionStorage.getItem("tvm-teacher") === "1") return startBoard(room);
+  $("pinGate").classList.remove("hidden"); $("boardCard").classList.add("hidden");
+  const tryPin = () => {
+    if ($("pinInput").value.trim() === TEACHER_PIN){
+      sessionStorage.setItem("tvm-teacher","1"); startBoard(room);
+    } else { $("pinErr").textContent = "Incorrect PIN."; $("pinInput").select(); }
+  };
+  $("pinBtn").onclick = tryPin;
+  $("pinInput").onkeydown = e => { if (e.key === "Enter") tryPin(); };
+  setTimeout(() => $("pinInput").focus(), 50);
+}
+
+async function startBoard(room){
+  $("pinGate").classList.add("hidden"); $("boardCard").classList.remove("hidden");
   const load = async () => {
     try { $("liveBoard").innerHTML = boardHTML(rank(await Store.load(room))); }
     catch(e){ $("liveBoard").innerHTML = `<p class="err">Couldn’t load the scoreboard.</p>`; }
