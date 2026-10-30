@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escape the Vault · Time Value of Money</title>
+<style>
+  :root{
+    --navy:#172840; --navy-2:#20365a; --teal:#1f6b8c; --orange:#e8a35c; --rust:#a4521a;
+    --cream:#f6f4ef; --card:#fffdf8; --line:#ddd6c8; --ink:#1b2a3d; --muted:#5b6575;
+    --ok:#2e7d4f; --bad:#b3372b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",Calibri,system-ui,-apple-system,sans-serif;background:var(--navy);color:var(--ink);min-height:100vh}
+  h1,h2,h3{font-family:Cambria,Georgia,"Times New Roman",serif;margin:0}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 18px 60px}
+  .eyebrow{letter-spacing:.18em;text-transform:uppercase;font-size:.75rem;font-weight:700;color:var(--orange)}
+  .card{background:var(--card);border-radius:16px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+  .hidden{display:none!important}
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;padding:12px 20px;font-weight:700}
+  .btn{background:var(--orange);color:var(--navy)}
+  .btn:hover{filter:brightness(1.05)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;border:2px solid var(--line);color:var(--ink)}
+  .btn-dark{background:var(--navy);color:#fff}
+  input[type=text]{font:inherit;width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:10px;background:#fff}
+  input[type=text]:focus{outline:none;border-color:var(--teal)}
+  label{font-weight:700;display:block;margin:14px 0 6px}
+
+  /* Intro */
+  .hero{color:#f6f4ef;margin:20px 0 26px}
+  .hero h1{font-size:clamp(2.2rem,6vw,3.6rem);line-height:1.05;margin:10px 0}
+  .hero p{color:#c9d3e0;font-size:1.1rem;max-width:640px}
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+  .rule{background:var(--cream);border-radius:12px;padding:14px}
+  .rule b{display:block;font-size:1.4rem;font-family:Cambria,Georgia,serif;color:var(--rust)}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+  .row>div{flex:1;min-width:200px}
+  .small{font-size:.85rem;color:var(--muted)}
+  .err{color:var(--bad);font-weight:600;margin-top:8px;min-height:1.2em}
+
+  /* HUD */
+  .hud{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#fff;margin-bottom:14px;flex-wrap:wrap}
+  .hud .pill{background:var(--navy-2);padding:8px 14px;border-radius:999px;font-weight:700}
+  .timer{font-family:Consolas,monospace;font-size:1.5rem;color:var(--orange)}
+  .timer.low{color:#ff7b6b;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.5}}
+  .keys{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-bottom:18px}
+  .key{height:38px;border-radius:8px;background:var(--navy-2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#7d8ba1;border:2px solid transparent;transition:.3s}
+  .key.current{border-color:var(--orange);color:#fff}
+  .key.solved{background:var(--teal);color:#fff}
+  .key.jammed{background:#5a2a24;color:#ffb3a8}
+
+  /* Room */
+  .room-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .room-head h2{font-size:1.8rem;margin-top:6px}
+  .lock-icon{font-size:2.6rem;transition:transform .4s}
+  .lock-icon.open{transform:rotate(-15deg) scale(1.15)}
+  .story{color:var(--muted);font-style:italic;margin:10px 0 16px}
+  .question{background:var(--cream);border-left:5px solid var(--rust);border-radius:10px;padding:16px 18px;font-size:1.08rem;line-height:1.55}
+  .question table{border-collapse:collapse;margin-top:10px;background:#fff}
+  .question td,.question th{border:1px solid var(--line);padding:6px 14px;text-align:right}
+  .question th{background:var(--navy);color:#fff}
+  .answer-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .answer-row input{flex:1;min-width:180px;font-size:1.15rem}
+  .unit{font-size:.85rem;color:var(--muted);margin-top:6px}
+  .options{display:grid;gap:10px;margin-top:16px}
+  .opt{text-align:left;background:#fff;border:2px solid var(--line);color:var(--ink);font-weight:500;padding:14px 16px}
+  .opt:hover{border-color:var(--teal)}
+  .opt.wrong{border-color:var(--bad);background:#fbecea;color:#7a2a22;cursor:not-allowed}
+  .opt.right{border-color:var(--ok);background:#e8f4ec}
+  .meta{display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px}
+  .attempts span{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--ok);margin-right:4px;vertical-align:middle}
+  .attempts span.used{background:#d9d2c3}
+  .hint{margin-top:14px;background:#e6f0f5;border-radius:10px;padding:12px 16px;color:#16455b}
+  .feedback{margin-top:14px;border-radius:10px;padding:14px 16px;line-height:1.5}
+  .feedback.ok{background:#e8f4ec;color:#1d5236}
+  .feedback.bad{background:#fbecea;color:#7a2a22}
+  .feedback.jam{background:#fff3e3;color:#6b3a10}
+  .shake{animation:shake .4s}
+  @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+  /* End + board */
+  .result-title{font-size:2.2rem;margin:6px 0}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:18px 0}
+  .stat{background:var(--cream);border-radius:12px;padding:12px;text-align:center}
+  .stat b{display:block;font-size:1.6rem;font-family:Cambria,Georgia,serif;color:var(--navy)}
+  table.board{width:100%;border-collapse:collapse;margin-top:10px}
+  table.board th{background:var(--navy);color:#fff;text-align:left;padding:10px}
+  table.board td{padding:10px;border-bottom:1px solid var(--line)}
+  table.board tr.me td{background:#fff3e3;font-weight:700}
+  table.board tr.first td{background:#fdf1d8}
+  .winner{background:var(--navy);color:#fff;border-radius:14px;padding:18px;text-align:center;margin:14px 0}
+  .winner .name{font-family:Cambria,Georgia,serif;font-size:2rem;color:var(--orange)}
+  details{margin-top:18px}
+  summary{cursor:pointer;font-weight:700}
+  .review-item{border-bottom:1px solid var(--line);padding:10px 0;font-size:.95rem}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.75rem;font-weight:700;color:#fff}
+  .badge.ok{background:var(--ok)} .badge.bad{background:var(--bad)} .badge.skip{background:#888}
+  .mode-note{font-size:.8rem;color:var(--muted);margin-top:8px}
+  footer{color:#8796ab;text-align:center;font-size:.8rem;margin-top:30px}
+  canvas#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section id="intro">
+    <div class="hero">
+      <div class="eyebrow">Corporate Finance · Lecture 1 · Escape Room</div>
+      <h1>🔐 Escape the Vault</h1>
+      <p>You’ve been locked inside the bank’s vault. Ten time-locked doors stand between you and the exit — and each opens only with the right time-value-of-money answer. The clock is ticking… and as you know, time <em>is</em> money.</p>
+    </div>
+    <div class="card">
+      <div class="rules">
+        <div class="rule"><b>10 locks</b>Solve each to move to the next room.</div>
+        <div class="rule"><b>20 minutes</b>When the clock hits zero, the vault seals.</div>
+        <div class="rule"><b>3 attempts</b>Each wrong try costs 25 pts. Three misses jam the lock (0 pts).</div>
+        <div class="rule"><b>Hints</b>Available on every lock, but cost 30 pts.</div>
+      </div>
+      <p class="small">Each lock is worth up to <b>100 points</b>. Escape before time runs out to earn a <b>time bonus</b> (1 point for every 4 seconds left). Ties are broken by fastest time. Have a calculator ready — round money to 2 decimals and rates to 2 decimal places (e.g. 9.86 for 9.86%).</p>
+      <div class="row">
+        <div>
+          <label for="nick">Choose a nickname</label>
+          <input type="text" id="nick" maxlength="20" placeholder="e.g. CompoundKing" autocomplete="off">
+        </div>
+        <div style="max-width:220px">
+          <label for="room">Class code</label>
+          <input type="text" id="room" maxlength="20" autocomplete="off">
+        </div>
+      </div>
+      <div class="err" id="introErr"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="startBtn">Enter the vault →</button>
+        <button class="btn-ghost" id="viewBoardBtn" type="button">View scoreboard</button>
+      </div>
+      <p class="mode-note" id="modeNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section id="game" class="hidden">
+    <div class="hud">
+      <span class="pill" id="hudName"></span>
+      <span class="pill">Score: <span id="hudScore">0</span></span>
+      <span class="pill timer" id="hudTimer">20:00</span>
+    </div>
+    <div class="keys" id="keys"></div>
+    <div class="card" id="roomCard">
+      <div class="room-head">
+        <div>
+          <div class="eyebrow" style="color:var(--rust)" id="roomLabel"></div>
+          <h2 id="roomTitle"></h2>
+        </div>
+        <div class="lock-icon" id="lockIcon">🔒</div>
+      </div>
+      <p class="story" id="roomStory"></p>
+      <div class="question" id="qText"></div>
+      <div id="answerArea"></div>
+      <div class="meta">
+        <div class="attempts" id="attempts"></div>
+        <button class="btn-ghost" id="hintBtn">💡 Hint (−30 pts)</button>
+      </div>
+      <div class="hint hidden" id="hintBox"></div>
+      <div class="feedback hidden" id="feedback"></div>
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-dark hidden" id="nextBtn">Next door →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ END ============ -->
+  <section id="end" class="hidden">
+    <div class="card">
+      <div class="eyebrow" style="color:var(--rust)" id="endEyebrow"></div>
+      <h2 class="result-title" id="endTitle"></h2>
+      <p id="endMsg" class="small"></p>
+      <div class="stats">
+        <div class="stat"><b id="sScore">0</b>Total score</div>
+        <div class="stat"><b id="sSolved">0/10</b>Locks opened</div>
+        <div class="stat"><b id="sTime">0:00</b>Time used</div>
+        <div class="stat"><b id="sBonus">0</b>Time bonus</div>
+      </div>
+      <h3>🏆 Scoreboard</h3>
+      <div id="endBoard"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn-ghost" id="refreshBtn">↻ Refresh scoreboard</button>
+        <button class="btn" id="againBtn">Play again</button>
+      </div>
+      <details>
+        <summary>Review the solutions</summary>
+        <div id="review"></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ BOARD (teacher / projector view) ============ -->
+  <section id="boardView" class="hidden">
+    <div class="hero">
+      <div class="eyebrow">Live scoreboard · Class code <span id="boardRoom"></span></div>
+      <h1>🏆 Who escaped the vault?</h1>
+    </div>
+    <div class="card">
+      <div id="liveBoard"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn-ghost" id="boardRefresh">↻ Refresh</button>
+        <button class="btn-ghost" id="boardBack">← Back to game</button>
+        <button class="btn-ghost" id="boardClear" style="color:var(--bad)">Clear this class's scores</button>
+      </div>
+      <p class="mode-note">Auto-refreshes every 5 seconds.</p>
+    </div>
+  </section>
+
+  <footer>Corporate Finance · Lecture 1 · Time Value of Money — Escape Room</footer>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURATION
+   ---------------------------------------------------------------------
+   SHARED SCOREBOARD (recommended for class use):
+   GitHub Pages is static, so to collect everyone's scores in one place
+   paste a Firebase Realtime Database URL below, e.g.
+     "https://your-project-default-rtdb.europe-west1.firebasedatabase.app"
+   Leave it empty ("") and the scoreboard is stored only on this device
+   (fine for a single shared screen / testing).
+   ===================================================================== */
+const FIREBASE_DB_URL = "";
+const DEFAULT_CLASS_CODE = "TVM-2026";
+const GAME_SECONDS = 20 * 60;
+const POINTS_PER_LOCK = 100, WRONG_PENALTY = 25, HINT_COST = 30, MAX_ATTEMPTS = 3, MIN_SOLVE_POINTS = 10;
+
+/* ============================ QUESTIONS ============================ */
+const QUESTIONS = [
+  { room:"The Lobby", icon:"🚪", topic:"The core idea",
+    story:"The vault door slams behind you. A brass plaque asks a simple question…",
+    q:"Why is £1 received today worth more than £1 received in a year’s time?",
+    type:"mc",
+    options:[
+      "Because money received today can be invested to earn a return",
+      "Because banks charge fees on future payments",
+      "Because the pound will definitely lose value against other currencies",
+      "Because future cash flows are always taxed more heavily"],
+    answer:0,
+    hint:"Think about what you could do with the money in the meantime.",
+    solution:"Money you have now can be <b>invested to earn a return</b>, growing into a larger amount in the future. That opportunity is the time value of money." },
+
+  { room:"The Teller’s Desk", icon:"🧾", topic:"One-period present value",
+    story:"A dusty IOU promises a payment next year. The lock wants to know what it’s worth now.",
+    q:"You will receive <b>£13,200</b> one year from now. The interest rate is <b>10%</b>. What is its present value today?",
+    type:"num", answer:12000, tol:2, unit:"£",
+    hint:"PV = C₁ ÷ (1 + r)",
+    solution:"PV = £13,200 ÷ 1.10 = <b>£12,000</b>" },
+
+  { room:"The Savings Corridor", icon:"🏦", topic:"Future value — compounding",
+    story:"Old savings passbooks line the walls. One has been left open…",
+    q:"You deposit <b>£2,000</b> in an account paying <b>7%</b>, compounded annually. How much will you have after <b>5 years</b>?",
+    type:"num", answer:2805.10, tol:2, unit:"£",
+    hint:"FV = C₀ × (1 + r)ᵀ",
+    solution:"FV = £2,000 × 1.07⁵ = £2,000 × 1.4026 = <b>£2,805.10</b>" },
+
+  { room:"The Land Registry", icon:"🗺️", topic:"One-period NPV",
+    story:"A deed for a plot of land is pinned to the door. Is it a bargain?",
+    q:"A plot of land costs <b>£50,000</b> today and will be worth a guaranteed <b>£54,000</b> next year. The bank pays <b>9%</b>. What is the <b>NPV</b> of buying the land? (Include a minus sign if negative.)",
+    type:"num", answer:-458.72, tol:2, unit:"£", signCheck:true,
+    hint:"NPV = −Cost + C₁ ÷ (1 + r)",
+    solution:"NPV = −£50,000 + £54,000 ÷ 1.09 = −£50,000 + £49,541.28 = <b>−£458.72</b>. Negative NPV → don’t buy; the bank beats the land." },
+
+  { room:"The Car Showroom", icon:"🚗", topic:"Finding the interest rate",
+    story:"A shiny car sits behind glass. A note reads: ‘Mine in five years — at what rate?’",
+    q:"You have <b>£10,000</b> today and want <b>£16,000</b> in <b>5 years</b>. What annual interest rate (in %) do you need?",
+    type:"num", answer:9.86, tol:0.03, unit:"%", pct:true,
+    hint:"£16,000 = £10,000 × (1 + r)⁵, so r = (1.6)^(1/5) − 1",
+    solution:"1.6 = (1 + r)⁵ → r = 1.6^(0.2) − 1 = <b>9.86%</b>" },
+
+  { room:"The Boardroom", icon:"📊", topic:"NPV of a stream of cash flows",
+    story:"A project proposal lies on the table. The board will only let you pass if you value it correctly.",
+    q:`A project costs <b>£100,000</b> today and returns the cash flows below. The discount rate is <b>8%</b>. What is the project’s <b>NPV</b>?
+       <table><tr><th>Year</th><th>Cash flow (£)</th></tr>
+       <tr><td>1</td><td>40,000</td></tr><tr><td>2</td><td>50,000</td></tr><tr><td>3</td><td>30,000</td></tr></table>`,
+    type:"num", answer:3718.95, tol:6, unit:"£",
+    hint:"Discount each cash flow: Cₜ ÷ (1.08)ᵗ, add them up, then subtract £100,000. PV factors at 8%: 0.9259, 0.8573, 0.7938.",
+    solution:"PV = 40,000/1.08 + 50,000/1.08² + 30,000/1.08³ = 37,037.04 + 42,866.94 + 23,814.97 = 103,718.95<br>NPV = 103,718.95 − 100,000 = <b>£3,718.95</b> (≈ £3,715 with table factors). Positive → invest." },
+
+  { room:"The Interest Rate Office", icon:"📈", topic:"Effective annual rate (EAR)",
+    story:"A bank poster advertises ‘12% a year!’. The small print says ‘compounded quarterly’…",
+    q:"A bank quotes a stated annual rate of <b>12%</b>, compounded <b>quarterly</b>. What is the <b>effective annual rate</b> (in %)?",
+    type:"num", answer:12.55, tol:0.02, unit:"%", pct:true,
+    hint:"EAR = (1 + r/m)ᵐ − 1, with m = 4",
+    solution:"EAR = (1 + 0.12/4)⁴ − 1 = 1.03⁴ − 1 = <b>12.55%</b>" },
+
+  { room:"The Infinity Chamber", icon:"♾️", topic:"Continuous compounding",
+    story:"The walls are covered in the symbol <i>e</i>. Interest here never stops being added…",
+    q:"You invest <b>£5,000</b> for <b>3 years</b> at <b>8%</b>, compounded <b>continuously</b>. What is it worth at the end?",
+    type:"num", answer:6356.25, tol:2, unit:"£",
+    hint:"FV = C₀ × e^(rT), with e ≈ 2.718",
+    solution:"FV = £5,000 × e^(0.08×3) = £5,000 × 1.2712 = <b>£6,356.25</b>" },
+
+  { room:"The Endowment Hall", icon:"🎓", topic:"Growing perpetuity",
+    story:"A portrait of a generous donor hangs here. Her scholarship grows every year — for ever.",
+    q:"A scholarship fund pays <b>£24,000 next year</b>, and payments grow by <b>2% a year for ever</b>. The discount rate is <b>10%</b>. What is the present value of the fund?",
+    type:"num", answer:300000, tol:1, unit:"£",
+    hint:"Growing perpetuity: PV = C ÷ (r − g), where C is next year’s payment.",
+    solution:"PV = £24,000 ÷ (0.10 − 0.02) = <b>£300,000</b>" },
+
+  { room:"The Final Vault Door", icon:"🏆", topic:"Annuity due (paid in advance)",
+    story:"The exit is in sight! One last lock — the trickiest of all.",
+    q:"You win a prize of <b>£10,000 a year for 5 years</b>, with the <b>first payment today</b>. The interest rate is <b>5%</b>. What is the prize worth today?",
+    type:"num", answer:45459.51, tol:3, unit:"£",
+    hint:"Today’s payment + an ordinary 4-year annuity. Annuity factor (4 years, 5%) = [1 − 1.05⁻⁴] ÷ 0.05 = 3.5460",
+    solution:"PV = £10,000 + £10,000 × 3.5460 = <b>£45,459.51</b>. (Annuity due: the first payment needs no discounting.)" }
+];
+
+/* ============================ STATE ============================ */
+const $ = id => document.getElementById(id);
+let S = null, timerId = null, boardTimer = null;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cleanRoom = s => (s||"").toUpperCase().replace(/[^A-Z0-9-]/g,"").slice(0,20) || DEFAULT_CLASS_CODE;
+const fmtTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+
+function show(id){ ["intro","game","end","boardView"].forEach(x => $(x).classList.toggle("hidden", x!==id)); window.scrollTo(0,0); }
+
+/* ============================ STORAGE ============================ */
+const Store = {
+  shared: !!FIREBASE_DB_URL,
+  url(room){ return `${FIREBASE_DB_URL.replace(/\/$/,"")}/tvm-escape/${room}.json`; },
+  async save(room, rec){
+    if (this.shared){
+      const r = await fetch(this.url(room), {method:"POST", body:JSON.stringify(rec)});
+      if (!r.ok) throw new Error("save failed");
+    } else {
+      const k = "tvm-escape-" + room;
+      const arr = JSON.parse(localStorage.getItem(k) || "[]"); arr.push(rec);
+      localStorage.setItem(k, JSON.stringify(arr));
+    }
+  },
+  async load(room){
+    if (this.shared){
+      const r = await fetch(this.url(room)); const d = await r.json();
+      return d ? Object.values(d) : [];
+    }
+    return JSON.parse(localStorage.getItem("tvm-escape-" + room) || "[]");
+  },
+  async clear(room){
+    if (this.shared) await fetch(this.url(room), {method:"DELETE"});
+    else localStorage.removeItem("tvm-escape-" + room);
+  }
+};
+
+function rank(records){
+  // keep each nickname's best run, then sort: score desc, time asc
+  const best = {};
+  records.forEach(r => {
+    if (!r || typeof r.name !== "string") return;
+    const k = r.name.toLowerCase();
+    const b = best[k];
+    if (!b || r.score > b.score || (r.score === b.score && r.time < b.time)) best[k] = r;
+  });
+  return Object.values(best).sort((a,b) => b.score - a.score || a.time - b.time);
+}
+
+function boardHTML(list, me){
+  if (!list.length) return `<p class="small">No scores yet — be the first to escape!</p>`;
+  const w = list[0];
+  let h = `<div class="winner">👑 Current winner<div class="name">${esc(w.name)}</div>${w.score} pts · ${w.solved}/10 locks · ${fmtTime(w.time)}</div>`;
+  h += `<table class="board"><tr><th>#</th><th>Nickname</th><th>Score</th><th>Locks</th><th>Time</th><th>Status</th></tr>`;
+  list.forEach((r,i) => {
+    const medal = ["🥇","🥈","🥉"][i] || (i+1);
+    const cls = (me && r.name.toLowerCase()===me.toLowerCase()) ? "me" : (i===0 ? "first" : "");
+    h += `<tr class="${cls}"><td>${medal}</td><td>${esc(r.name)}</td><td>${r.score}</td><td>${r.solved}/10</td><td>${fmtTime(r.time)}</td><td>${r.escaped ? "🔓 Escaped" : "⏰ Trapped"}</td></tr>`;
+  });
+  return h + `</table>`;
+}
+
+/* ============================ INTRO ============================ */
+const params = new URLSearchParams(location.search);
+$("room").value = cleanRoom(params.get("room") || DEFAULT_CLASS_CODE);
+$("modeNote").textContent = Store.shared
+  ? "🌐 Shared scoreboard is ON — everyone with the same class code appears on one leaderboard."
+  : "💾 Scoreboard is saved on this device only (set FIREBASE_DB_URL in the file for a class-wide scoreboard).";
+
+$("startBtn").onclick = startGame;
+$("nick").addEventListener("keydown", e => { if (e.key === "Enter") startGame(); });
+$("viewBoardBtn").onclick = () => openBoard(cleanRoom($("room").value));
+
+function startGame(){
+  const name = $("nick").value.trim().replace(/\s+/g," ");
+  if (name.length < 2){ $("introErr").textContent = "Please enter a nickname (at least 2 characters)."; return; }
+  $("introErr").textContent = "";
+  S = { name, room: cleanRoom($("room").value), idx:0, score:0, left:GAME_SECONDS, start:Date.now(),
+        results: QUESTIONS.map(() => ({status:"pending", attempts:0, hint:false, points:0})), over:false };
+  $("hudName").textContent = "🕵️ " + name;
+  buildKeys(); show("game"); loadRoom();
+  clearInterval(timerId);
+  timerId = setInterval(tick, 1000); renderTimer();
+}
+
+/* ============================ GAME ============================ */
+function tick(){
+  S.left = GAME_SECONDS - Math.floor((Date.now() - S.start)/1000);
+  if (S.left <= 0){ S.left = 0; renderTimer(); endGame(false); return; }
+  renderTimer();
+}
+function renderTimer(){
+  $("hudTimer").textContent = "⏱ " + fmtTime(S.left);
+  $("hudTimer").classList.toggle("low", S.left <= 120);
+}
+function buildKeys(){
+  $("keys").innerHTML = QUESTIONS.map((q,i) => `<div class="key" id="key${i}" title="Lock ${i+1}">${i+1}</div>`).join("");
+}
+function renderKeys(){
+  S.results.forEach((r,i) => {
+    const k = $("key"+i);
+    k.className = "key" + (r.status==="solved" ? " solved" : r.status==="jammed" ? " jammed" : "") + (i===S.idx && r.status==="pending" ? " current" : "");
+    k.textContent = r.status==="solved" ? "🔑" : r.status==="jammed" ? "✖" : i+1;
+  });
+}
+function renderAttempts(){
+  const used = S.results[S.idx].attempts;
+  $("attempts").innerHTML = "Attempts: " + Array.from({length:MAX_ATTEMPTS},(_,i)=>`<span class="${i<used?'used':''}"></span>`).join("");
+}
+
+function loadRoom(){
+  const q = QUESTIONS[S.idx];
+  $("roomLabel").textContent = `Lock ${S.idx+1} of 10 · ${q.topic}`;
+  $("roomTitle").textContent = `${q.icon} ${q.room}`;
+  $("roomStory").textContent = q.story;
+  $("qText").innerHTML = q.q;
+  $("lockIcon").textContent = "🔒"; $("lockIcon").classList.remove("open");
+  $("hintBox").classList.add("hidden"); $("feedback").classList.add("hidden");
+  $("nextBtn").classList.add("hidden");
+  $("hintBtn").disabled = false; $("hintBtn").classList.remove("hidden");
+
+  if (q.type === "mc"){
+    $("answerArea").innerHTML = `<div class="options">` +
+      q.options.map((o,i)=>`<button class="opt" data-i="${i}">${String.fromCharCode(65+i)}. ${o}</button>`).join("") + `</div>`;
+    $("answerArea").querySelectorAll(".opt").forEach(b => b.onclick = () => { if (!b.disabled) submit(+b.dataset.i, b); });
+  } else {
+    $("answerArea").innerHTML = `<div class="answer-row">
+        <input type="text" id="ans" inputmode="decimal" autocomplete="off" placeholder="${q.pct ? 'Rate in %, e.g. 9.86' : 'Amount, e.g. 1234.56'}">
+        <button class="btn" id="submitBtn">Unlock</button></div>
+        <div class="unit">${q.pct ? "Answer as a percentage to 2 decimal places." : "Answer in £ to 2 decimal places (commas and £ sign are fine)."}</div>`;
+    $("submitBtn").onclick = () => submit($("ans").value);
+    $("ans").addEventListener("keydown", e => { if (e.key==="Enter") submit($("ans").value); });
+    setTimeout(()=>$("ans").focus(), 50);
+  }
+  renderAttempts(); renderKeys();
+}
+
+function parseNum(raw, pct){
+  let s = String(raw).replace(/[£$€,\s%]/g,"").replace(/[−–]/g,"-");
+  if (s === "" || isNaN(+s)) return null;
+  let v = +s;
+  if (pct && Math.abs(v) < 1 && v !== 0) v *= 100;  // accept 0.0986 for 9.86%
+  return v;
+}
+
+function submit(val, btn){
+  if (S.over) return;
+  const q = QUESTIONS[S.idx], r = S.results[S.idx];
+  if (r.status !== "pending") return;
+  let correct, extra = "";
+  if (q.type === "mc"){
+    correct = val === q.answer;
+  } else {
+    const v = parseNum(val, q.pct);
+    if (v === null){ flash("bad","Please enter a number."); return; }
+    correct = Math.abs(v - q.answer) <= q.tol;
+    if (!correct && q.signCheck && Math.abs(-v - q.answer) <= q.tol) extra = " Close — check the <b>sign</b>!";
+    r.lastAnswer = val;
+  }
+  r.attempts++;
+  renderAttempts();
+
+  if (correct){
+    let pts = POINTS_PER_LOCK - WRONG_PENALTY*(r.attempts-1) - (r.hint ? HINT_COST : 0);
+    pts = Math.max(MIN_SOLVE_POINTS, pts);
+    r.status = "solved"; r.points = pts; S.score += pts;
+    $("hudScore").textContent = S.score;
+    if (btn) btn.classList.add("right");
+    $("lockIcon").textContent = "🔓"; $("lockIcon").classList.add("open");
+    flash("ok", `✅ <b>Click!</b> The lock opens. +${pts} points.<br>${q.solution}`);
+    finishRoom();
+  } else if (r.attempts >= MAX_ATTEMPTS){
+    r.status = "jammed";
+    if (btn) btn.classList.add("wrong");
+    shake();
+    const shown = q.type==="mc" ? `Correct answer: <b>${String.fromCharCode(65+q.answer)}</b>. ` : "";
+    flash("jam", `🔧 The lock jammed — but a maintenance hatch lets you through (0 points).<br>${shown}${q.solution}`);
+    finishRoom();
+  } else {
+    if (btn){ btn.classList.add("wrong"); btn.disabled = true; }
+    shake();
+    const left = MAX_ATTEMPTS - r.attempts;
+    flash("bad", `❌ Wrong combination (−${WRONG_PENALTY} pts on this lock).${extra} ${left} attempt${left>1?"s":""} left.`);
+    if ($("ans")) { $("ans").select(); }
+  }
+}
+
+function finishRoom(){
+  $("answerArea").querySelectorAll("button,input").forEach(el => el.disabled = true);
+  $("hintBtn").disabled = true;
+  renderKeys();
+  const last = S.idx === QUESTIONS.length - 1;
+  $("nextBtn").textContent = last ? "Open the exit →" : "Next door →";
+  $("nextBtn").classList.remove("hidden");
+  $("nextBtn").onclick = () => { if (last) endGame(true); else { S.idx++; loadRoom(); } };
+  $("nextBtn").focus();
+}
+
+$("hintBtn").onclick = () => {
+  const r = S.results[S.idx];
+  if (r.status !== "pending") return;
+  r.hint = true;
+  $("hintBox").innerHTML = "💡 " + QUESTIONS[S.idx].hint;
+  $("hintBox").classList.remove("hidden");
+  $("hintBtn").disabled = true;
+};
+
+function flash(kind, html){ const f = $("feedback"); f.className = "feedback " + kind; f.innerHTML = html; }
+function shake(){ const c = $("roomCard"); c.classList.remove("shake"); void c.offsetWidth; c.classList.add("shake"); }
+
+/* ============================ END ============================ */
+async function endGame(escaped){
+  if (S.over) return;
+  S.over = true; clearInterval(timerId);
+  const used = Math.min(GAME_SECONDS, Math.round((Date.now() - S.start)/1000));
+  const solved = S.results.filter(r => r.status==="solved").length;
+  const bonus = escaped ? Math.floor((GAME_SECONDS - used)/4) : 0;
+  const total = S.score + bonus;
+  S.record = { name:S.name, score:total, solved, time:used, escaped, at:new Date().toISOString() };
+
+  $("endEyebrow").textContent = escaped ? "Vault unlocked" : "Time’s up";
+  $("endTitle").textContent = escaped ? `🎉 You escaped, ${S.name}!` : `⏰ The vault has sealed, ${S.name}…`;
+  $("endMsg").textContent = escaped
+    ? (solved===10 ? "Every lock opened cleanly — a true master of the time value of money." : "You made it out! Review the jammed locks below to sharpen your skills.")
+    : "The clock beat you this time — but remember, a pound of learning today is worth more than a pound tomorrow.";
+  $("sScore").textContent = total; $("sSolved").textContent = `${solved}/10`;
+  $("sTime").textContent = fmtTime(used); $("sBonus").textContent = "+" + bonus;
+
+  $("review").innerHTML = QUESTIONS.map((q,i) => {
+    const r = S.results[i];
+    const b = r.status==="solved" ? `<span class="badge ok">+${r.points}</span>` : r.status==="jammed" ? `<span class="badge bad">Jammed</span>` : `<span class="badge skip">Not reached</span>`;
+    return `<div class="review-item">${b} <b>Lock ${i+1}: ${q.topic}</b><br>${q.solution}</div>`;
+  }).join("");
+
+  show("end");
+  if (escaped) confetti();
+  $("endBoard").innerHTML = `<p class="small">Saving your score…</p>`;
+  try { await Store.save(S.room, S.record); }
+  catch(e){ $("endBoard").innerHTML = `<p class="err">Couldn’t reach the shared scoreboard. Show your teacher this screen: ${total} pts.</p>`; return; }
+  refreshEndBoard();
+}
+
+async function refreshEndBoard(){
+  try { $("endBoard").innerHTML = boardHTML(rank(await Store.load(S.room)), S.name); }
+  catch(e){ $("endBoard").innerHTML = `<p class="err">Couldn’t load the scoreboard.</p>`; }
+}
+$("refreshBtn").onclick = refreshEndBoard;
+$("againBtn").onclick = () => { show("intro"); $("nick").value = S.name; };
+
+/* ============================ BOARD VIEW ============================ */
+async function openBoard(room){
+  $("boardRoom").textContent = room; show("boardView");
+  const load = async () => {
+    try { $("liveBoard").innerHTML = boardHTML(rank(await Store.load(room))); }
+    catch(e){ $("liveBoard").innerHTML = `<p class="err">Couldn’t load the scoreboard.</p>`; }
+  };
+  await load();
+  clearInterval(boardTimer); boardTimer = setInterval(load, 5000);
+  $("boardRefresh").onclick = load;
+  $("boardBack").onclick = () => { clearInterval(boardTimer); show("intro"); };
+  $("boardClear").onclick = async () => {
+    if (confirm(`Delete all scores for class code ${room}?`)) { await Store.clear(room); load(); }
+  };
+}
+if (params.get("board") !== null) openBoard(cleanRoom(params.get("room") || DEFAULT_CLASS_CODE));
+
+/* ============================ CONFETTI ============================ */
+function confetti(){
+  const c = $("confetti"), x = c.getContext("2d");
+  c.width = innerWidth; c.height = innerHeight;
+  const colors = ["#e8a35c","#1f6b8c","#fffdf8","#a4521a","#7fb8d0"];
+  const P = Array.from({length:180}, () => ({ x:Math.random()*c.width, y:-20-Math.random()*c.height*.5,
+    w:6+Math.random()*6, h:8+Math.random()*8, vy:2+Math.random()*3, vx:-1.5+Math.random()*3,
+    r:Math.random()*6, vr:-.2+Math.random()*.4, col:colors[Math.floor(Math.random()*colors.length)] }));
+  let frames = 0;
+  (function draw(){
+    x.clearRect(0,0,c.width,c.height);
+    P.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; x.save(); x.translate(p.x,p.y); x.rotate(p.r); x.fillStyle=p.col; x.fillRect(-p.w/2,-p.h/2,p.w,p.h); x.restore(); });
+    if (++frames < 260) requestAnimationFrame(draw); else x.clearRect(0,0,c.width,c.height);
+  })();
+}
+</script>
+</body>
+</html>
